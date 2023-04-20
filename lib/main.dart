@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:gtptg/constant.dart';
+import 'package:http/http.dart' as http;
+import 'dart:developer' as developer;
 import 'model.dart';
 
 void main() {
@@ -11,7 +15,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: ChatPage(),
       debugShowCheckedModeBanner: false,
     );
@@ -31,16 +35,39 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   late  bool isLoading;
-  TextEditingController _textController = TextEditingController();
+  final TextEditingController _textController = TextEditingController();
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
 
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     isLoading = false;
+  }
+
+  Future<String> generateResponse(String prompt) async {
+    const apiKey = apiSecretKey;
+    var url = Uri.http("api.openai.com", "/v1/completions");
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type':'application/json',
+        'Authorization':'Bearer $apiKey'
+      },
+      body: jsonEncode({
+        'model': 'text-davinci-003',
+        'prompt': prompt,
+        'temperature': 0,
+        'max_token': 2000,
+        'top_p': 1,
+        'frequency_penalty': 0.0,
+        'presence_penalty': 0.0,
+      }));
+
+      //decode the response
+      Map<String, dynamic> newresponse = jsonDecode(response.body);
+      return newresponse['choices'][0]['text'];
   }
 
   @override
@@ -49,7 +76,7 @@ class _ChatPageState extends State<ChatPage> {
       child: Scaffold(
         appBar: AppBar(
           toolbarHeight: 100,
-          title: Padding(
+          title: const Padding(
             padding: EdgeInsets.all(8.0),
             child: Text(
               'OpenAIs chatGPT flutter Exg',
@@ -68,7 +95,7 @@ class _ChatPageState extends State<ChatPage> {
             ),
             Visibility(
               visible: isLoading,
-              child: CircularProgressIndicator(
+              child: const CircularProgressIndicator(
               color: Colors.white,
               ),
               ),
@@ -93,9 +120,9 @@ class _ChatPageState extends State<ChatPage> {
     return Expanded(
       child: TextField(
         textCapitalization: TextCapitalization.sentences,
-        style: TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white),
         controller: _textController,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           fillColor: botBackgroundColor,
           filled: true,
           border: InputBorder.none,
@@ -114,12 +141,45 @@ class _ChatPageState extends State<ChatPage> {
     child: Container(
       color: botBackgroundColor,
       child: IconButton(
-        icon: Icon(Icons.send, color: Color.fromRGBO(142, 142, 160, 1),), 
+        icon: const Icon(Icons.send, color: Color.fromRGBO(142, 142, 160, 1),), 
         onPressed: () {
-          
+          // display user input
+          setState(() {
+            _messages.add(ChatMessage(
+              text: _textController.text, 
+              chatMessageType: ChatMessageType.user));
+            isLoading = true;
+          });
+          var input = _textController.text;
+          _textController.clear();
+          Future.delayed(const Duration(milliseconds: 50))
+          .then((value) => _scrollDown());
+
+          // call chatbot api
+          generateResponse(input).then((value) {
+            setState(() {
+              isLoading = false;
+          //display chatbot response
+            _messages.add(ChatMessage(
+              text: value,
+              chatMessageType: ChatMessageType.bot,
+            ));
+            });
+            _textController.clear();
+            Future.delayed(const Duration(milliseconds: 50))
+            .then((value) => _scrollDown());
+          });
         },
         ),
     )
+    );
+ }
+
+ void _scrollDown() {
+  _scrollController.animateTo(
+    _scrollController.position.maxScrollExtent, 
+    duration: const Duration(milliseconds: 300), 
+    curve: Curves.easeOut,
     );
  }
 
@@ -145,23 +205,23 @@ class ChatMessageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 10),
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.all(16),
       color: chatMessageType == ChatMessageType.bot ? botBackgroundColor : backgroundColor,
       child: Row(
         children: [
         chatMessageType == ChatMessageType.bot
          ? Container(
-          margin: EdgeInsets.only(right: 16),
+          margin: const EdgeInsets.only(right: 16),
           child: CircleAvatar(
-            backgroundColor: Color.fromRGBO(16, 163, 127, 1), 
+            backgroundColor: const Color.fromRGBO(16, 163, 127, 1), 
             child: Image.asset('assets/images/chatBotPng.png', color: Colors.white, scale: 1.5,
             ),
           ),
         )
         : Container(
-          margin: EdgeInsets.only(right: 16),
-          child: CircleAvatar(
+          margin: const EdgeInsets.only(right: 16),
+          child: const CircleAvatar(
             child: Icon(Icons.person),
           ),
         ),
@@ -170,8 +230,8 @@ class ChatMessageWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
                   borderRadius: BorderRadius.all(
                     Radius.circular(8),
                   ),
